@@ -1,29 +1,42 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { getToken } from "@/api/storage";
+import AuthContext from "@/context/AuthContext";
+import colors from "@/data/styling/colors";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { router, Stack } from "expo-router";
+import { useEffect, useState } from "react";
+import { StatusBar } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  const queryClient = new QueryClient();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = await getToken();
+      if (token) {
+        setIsAuthenticated(true);
+      }else {
+        setIsAuthenticated(false);
+        router.push("/login");
+      }
+    };
+    checkToken();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated }}>
+      <SafeAreaProvider>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }}>
+          <QueryClientProvider client={queryClient}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </QueryClientProvider>
+          <StatusBar barStyle={"light-content"} />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </AuthContext.Provider>
   );
 }
